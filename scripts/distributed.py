@@ -14,21 +14,21 @@ import wandb
 
 @dataclass
 class Args:
-    workers_per_gpu: int
-    """number of workers per gpu"""
+    workers_per_gpu: int = 1          
+    """number of workers per GPU"""
 
-    input_models_path: str
-    """Path to a json file containing a list of 3D object files"""
+    input_models_path: str = "input_models_path.json"   
+    """Path to the JSON list of 3-D objects"""
 
     upload_to_s3: bool = False
-    """Whether to upload the rendered images to S3"""
-
     log_to_wandb: bool = False
-    """Whether to log the progress to wandb"""
 
-    num_gpus: int = -1
-    """number of gpus to use. -1 means all available gpus"""
+    num_gpus: int = 1                
+    """number of GPUs to use"""
 
+    output_dir: str = (
+        "/home/stud/lavingal/storage/slurm/lavingal/LVSM/datasets/objaverseplus/images"
+    )                              
 
 def worker(
     queue: multiprocessing.JoinableQueue,
@@ -40,13 +40,16 @@ def worker(
         item = queue.get()
         if item is None:
             break
-
+        BLENDER = "/home/stud/lavingal/storage/slurm/lavingal/blender-3.2.2-linux-x64/blender"
+        RENDER_PY = "/home/stud/lavingal/storage/slurm/lavingal/objaverse-rendering/scripts/blender_script.py"
+        XVFB = "xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24'"
         # Perform some operation on the item
         print(item, gpu)
         command = (
-            f"export DISPLAY=:0.{gpu} &&"
-            f" blender-3.2.2-linux-x64/blender -b -P scripts/blender_script.py --"
+           # f"export DISPLAY=:0.{gpu} &&"
+            f"{XVFB} {BLENDER} -b -P {RENDER_PY} -- "
             f" --object_path {item}"
+            f" --output_dir {args.output_dir}"
         )
         subprocess.run(command, shell=True)
 

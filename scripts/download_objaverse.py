@@ -43,6 +43,7 @@ if __name__ == "__main__":
 
     random.seed(42)
 
+  # replace these uids with our subset
     uids = objaverse.load_uids()
 
     random.shuffle(uids)

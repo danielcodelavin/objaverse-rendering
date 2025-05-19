@@ -18,6 +18,7 @@ Here, input_model_paths.json is a json file containing a list of paths to .glb.
 
 import argparse
 import math
+import json
 import os
 import random
 import sys
@@ -37,9 +38,9 @@ parser.add_argument(
 )
 parser.add_argument("--output_dir", type=str, default="./views")
 parser.add_argument(
-    "--engine", type=str, default="BLENDER_EEVEE", choices=["CYCLES", "BLENDER_EEVEE"]
+    "--engine", type=str, default="CYCLES", choices=["CYCLES", "BLENDER_EEVEE"]
 )
-parser.add_argument("--num_images", type=int, default=12)
+parser.add_argument("--num_images", type=int, default=32)
 parser.add_argument("--camera_dist", type=int, default=1.5)
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
@@ -52,19 +53,25 @@ render = scene.render
 render.engine = args.engine
 render.image_settings.file_format = "PNG"
 render.image_settings.color_mode = "RGBA"
-render.resolution_x = 512
-render.resolution_y = 512
+render.resolution_x = 256
+render.resolution_y = 256
 render.resolution_percentage = 100
 
 scene.cycles.device = "GPU"
-scene.cycles.samples = 32
+scene.cycles.use_adaptive_sampling = True
+scene.cycles.samples = 8
+scene.cycles.use_persistent_data = True
+scene.cycles.max_bounces = 2
 scene.cycles.diffuse_bounces = 1
 scene.cycles.glossy_bounces = 1
-scene.cycles.transparent_max_bounces = 3
-scene.cycles.transmission_bounces = 3
+scene.cycles.use_auo_tile = False
+scene.cycles.transparent_max_bounces = 2
+scene.cycles.transmission_bounces = 2
 scene.cycles.filter_width = 0.01
 scene.cycles.use_denoising = True
 scene.render.film_transparent = True
+scene.render.use_simplify = True
+scene.render.simplify_subdivision_render = 0
 
 
 def sample_point_on_sphere(radius: float) -> Tuple[float, float, float]:
@@ -176,32 +183,61 @@ def setup_camera():
 def save_images(object_file: str) -> None:
     """Saves rendered images of the object in the scene."""
     os.makedirs(args.output_dir, exist_ok=True)
+
     reset_scene()
-    # load the object
     load_object(object_file)
     object_uid = os.path.basename(object_file).split(".")[0]
+
     normalize_scene()
     add_lighting()
+
     cam, cam_constraint = setup_camera()
-    # create an empty object to track
     empty = bpy.data.objects.new("Empty", None)
     scene.collection.objects.link(empty)
     cam_constraint.target = empty
+
+    frames_meta = []   # ## CHANGE: collect metadata per frame
+
     for i in range(args.num_images):
-        # set the camera position
-        theta = (i / args.num_images) * math.pi * 2
-        phi = math.radians(60)
-        point = (
-            args.camera_dist * math.sin(phi) * math.cos(theta),
-            args.camera_dist * math.sin(phi) * math.sin(theta),
-            args.camera_dist * math.cos(phi),
-        )
-        cam.location = point
-        # render the image
-        render_path = os.path.join(args.output_dir, object_uid, f"{i:03d}.png")
+        # ## CHANGE: random camera within specified shell & height range
+        # -----------------------------------------------------------
+        r = random.uniform(1.5, 2.4)
+        # sample a random point on unit sphere
+        x, y, z = sample_point_on_sphere(1.0)
+        # enforce height range [-0.75, 1.60]
+        # scale z to desired range while keeping (x,y) direction
+        z = random.uniform(-0.75, 1.60) / r
+        xy_scale = math.sqrt(max(1 - z ** 2, 0))
+        x *= xy_scale
+        y *= xy_scale
+        cam.location = (r * x, r * y, r * z)
+        # -----------------------------------------------------------
+
+        render_path = os.path.join(args.output_dir, object_uid, f"{i:05d}.png")
+        os.makedirs(os.path.dirname(render_path), exist_ok=True)
         scene.render.filepath = render_path
         bpy.ops.render.render(write_still=True)
 
+        # ## CHANGE: compute intrinsics & store w2c for this frame
+        sensor_w = cam.data.sensor_width
+        sensor_h = cam.data.sensor_height if cam.data.sensor_fit == 'VERTICAL' else sensor_w
+        fx = cam.data.lens * render.resolution_x / sensor_w
+        fy = cam.data.lens * render.resolution_y / sensor_h
+        cx = render.resolution_x / 2
+        cy = render.resolution_y / 2
+
+        frame_meta = {
+            "image_path": os.path.abspath(render_path),
+            "fxfycxcy": [fx, fy, cx, cy],
+            "w2c": [list(row) for row in cam.matrix_world.inverted()],
+        }
+        frames_meta.append(frame_meta)
+
+    # ## CHANGE: write per‑object metadata json
+    meta_dir = os.path.join(os.path.dirname(args.output_dir.rstrip(os.sep)), "metadata")
+    os.makedirs(meta_dir, exist_ok=True)
+    with open(os.path.join(meta_dir, f"{object_uid}.json"), "w") as f:
+        json.dump({"scene_name": object_uid, "frames": frames_meta}, f, indent=2)
 
 def download_object(object_url: str) -> str:
     """Download the object and return the path."""
