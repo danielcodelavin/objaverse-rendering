@@ -28,6 +28,34 @@ from typing import Tuple
 
 import bpy
 from mathutils import Vector
+import addon_utils
+import bpy, addon_utils, time
+
+addon_utils.enable("cycles", default_set=True, persistent=True)
+
+prefs      = bpy.context.preferences
+cy_prefs   = prefs.addons["cycles"].preferences
+cy_prefs.compute_device_type = "OPTIX"       # or "CUDA" if OptiX not installed
+
+cy_prefs.get_devices()                       # refresh list in Blender ≤ 3.4
+# cy_prefs.refresh_devices()                 # use this in Blender ≥ 3.5
+
+# ---- print BEFORE enabling ------------------------------------------
+print(f"[{time.time():.6f}]  devices BEFORE enabling:",
+      [(d.name, d.type, d.use) for d in cy_prefs.devices],
+      flush=True)
+
+for dev in cy_prefs.devices:                 # enable every visible GPU
+    dev.use = (dev.type != 'CPU')
+
+# ---- print AFTER enabling -------------------------------------------
+print(f"[{time.time():.6f}]  devices AFTER enabling:",
+      [(d.name, d.type, d.use) for d in cy_prefs.devices],
+      flush=True)
+
+assert cy_prefs.has_active_device(), "No GPU enabled – aborting."
+
+bpy.context.scene.cycles.device = "GPU"
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -61,12 +89,12 @@ scene.cycles.device = "GPU"
 scene.cycles.use_adaptive_sampling = True
 scene.cycles.samples = 8
 scene.cycles.use_persistent_data = True
-scene.cycles.max_bounces = 2
+scene.cycles.max_bounces = 1
 scene.cycles.diffuse_bounces = 1
 scene.cycles.glossy_bounces = 1
 scene.cycles.use_auo_tile = False
-scene.cycles.transparent_max_bounces = 2
-scene.cycles.transmission_bounces = 2
+scene.cycles.transparent_max_bounces = 1
+scene.cycles.transmission_bounces = 1
 scene.cycles.filter_width = 0.01
 scene.cycles.use_denoising = True
 scene.render.film_transparent = True

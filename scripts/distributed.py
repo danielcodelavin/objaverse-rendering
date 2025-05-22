@@ -6,7 +6,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from typing import Optional
-
+import os
 import boto3
 import tyro
 import wandb
@@ -17,7 +17,7 @@ class Args:
     workers_per_gpu: int = 1          
     """number of workers per GPU"""
 
-    input_models_path: str = "input_models_path.json"   
+    input_models_path: str = "truncated_input_models_path.json"   
     """Path to the JSON list of 3-D objects"""
 
     upload_to_s3: bool = False
@@ -27,7 +27,7 @@ class Args:
     """number of GPUs to use"""
 
     output_dir: str = (
-        "/home/stud/lavingal/storage/slurm/lavingal/LVSM/datasets/objaverseplus/images"
+        "/home/stud/lavingal/storage/slurm/lavingal/LVSM/datasets/trash/images"
     )                              
 
 def worker(
@@ -40,18 +40,23 @@ def worker(
         item = queue.get()
         if item is None:
             break
+
+        env = os.environ.copy()
+        env["CUDA_VISIBLE_DEVICES"] = str(gpu)     # ↳ Blender now sees *just* that GPU
+        env["DISPLAY"] = f":0.{gpu}"               # optional: separate X-screen per GPU
+
+
+
         BLENDER = "/home/stud/lavingal/storage/slurm/lavingal/blender-3.2.2-linux-x64/blender"
         RENDER_PY = "/home/stud/lavingal/storage/slurm/lavingal/objaverse-rendering/scripts/blender_script.py"
         XVFB = "xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24'"
         # Perform some operation on the item
         print(item, gpu)
         command = (
-           # f"export DISPLAY=:0.{gpu} &&"
-            f"{XVFB} {BLENDER} -b -P {RENDER_PY} -- "
-            f" --object_path {item}"
-            f" --output_dir {args.output_dir}"
-        )
-        subprocess.run(command, shell=True)
+        f"{XVFB} {BLENDER} -b "     
+        f"--python {RENDER_PY} -- --object_path {item} "
+        f"--output_dir {args.output_dir}")
+        subprocess.run(command, shell=True, env=env)
 
         if args.upload_to_s3:
             if item.startswith("http"):
