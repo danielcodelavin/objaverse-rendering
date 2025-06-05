@@ -27,7 +27,7 @@ class Args:
     """number of GPUs to use"""
 
     output_dir: str = (
-        "/home/stud/lavingal/storage/slurm/lavingal/LVSM/datasets/trash/images"
+        "/home/stud/lavingal/storage/slurm/lavingal/LVSM/datasets/objaverseplus/images"
     )                              
 
 def worker(

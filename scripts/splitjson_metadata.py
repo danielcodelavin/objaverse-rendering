@@ -45,7 +45,7 @@ def remove_urls_by_uid(uid_array: List[str], filepath: str) -> List[str]:
     kept_urls = [url for url in urls if uid_from_url(url) not in uid_set]
 
     # 4. Build new filename: same folder, prefixed with 'truncated_'
-    new_path = path.with_name(f"truncated_{path.name}")
+    new_path = path.with_name(f"real_{path.name}")
 
     # 5. Write the filtered list to the new file
     with new_path.open("w", encoding="utf-8") as f:
@@ -65,7 +65,7 @@ def load_metadata_filenames(folder):
 
 if __name__ == "__main__":
     METADATA_FOLDER ="/home/stud/lavingal/storage/slurm/lavingal/LVSM/datasets/objaverseplus/metadata"
-    JSON_FILE = "/home/stud/lavingal/storage/slurm/lavingal/objaverse-rendering/scripts/input_models_path.json"
+    JSON_FILE = "/home/stud/lavingal/storage/slurm/lavingal/objaverse-rendering/scripts/truncated_input_models_path.json"
     bad_uids = load_metadata_filenames(METADATA_FOLDER)
     retained_urls = remove_urls_by_uid(bad_uids, JSON_FILE)
     print(f"Removed {len(bad_uids)} uids from {len(retained_urls)} urls.")
