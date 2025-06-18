@@ -27,7 +27,7 @@ class Args:
     """number of GPUs to use"""
 
     output_dir: str = (
-        "/home/stud/lavingal/storage/slurm/lavingal/LVSM/datasets/objaverseplus/images"
+        "/storage/slurm/lavingal/lavingal/LVSM/datasets/objaverseplus/images"
     )                              
 
 def worker(
@@ -47,8 +47,8 @@ def worker(
 
 
 
-        BLENDER = "/home/stud/lavingal/storage/slurm/lavingal/blender-3.2.2-linux-x64/blender"
-        RENDER_PY = "/home/stud/lavingal/storage/slurm/lavingal/objaverse-rendering/scripts/blender_script.py"
+        BLENDER = "/storage/slurm/lavingal/lavingal/blender-3.2.2-linux-x64/blender"
+        RENDER_PY = "/storage/slurm/lavingal/lavingal/objaverse-rendering/scripts/blender_script.py"
         XVFB = "xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24'"
         # Perform some operation on the item
         print(item, gpu)
