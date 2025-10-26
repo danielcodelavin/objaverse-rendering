@@ -10,17 +10,14 @@ def generate_gso_urls():
     user-friendly method for this task.
     """
     try:
-        # Get authenticated credentials. This is the key step.
-        # It will automatically open a browser for you to log in
-        # the first time you run it. Your credentials are then cached locally
-        # for future runs.
+       
         print("Attempting to authenticate with Google...")
         credentials, project = google.auth.default(
             scopes=["https://www.googleapis.com/auth/devstorage.read_only"]
         )
         print("Authentication successful.")
 
-        # Create a client using the obtained credentials.
+       
         storage_client = storage.Client(credentials=credentials)
         
         bucket_name = "gso"

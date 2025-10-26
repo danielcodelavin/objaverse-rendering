@@ -4,28 +4,10 @@ from typing import List
 import os
 
 def remove_urls_by_uid(uid_array: List[str], filepath: str) -> List[str]:
-    """
-    Read `filepath` (a JSON list of URL strings), drop any URL whose uid
-    matches one in `uid_array`, and write the remaining URLs to a new file
-    in the same directory whose name is prefixed with 'truncated_'.
 
-    Parameters
-    ----------
-    uid_array : List[str]
-        Identifiers to remove, e.g. ["0005033c...", "00064e6..."].
-    filepath : str
-        Path to the original JSON file containing the URL list.
-
-    Returns
-    -------
-    List[str]
-        The list of URLs that were kept (also saved to the new JSON file).
-
-    The original file is left unmodified.
-    """
     path = Path(filepath)
 
-    # 1. Load the JSON list of URLs
+   
     try:
         with path.open("r", encoding="utf-8") as f:
             urls: List[str] = json.load(f)
@@ -36,18 +18,18 @@ def remove_urls_by_uid(uid_array: List[str], filepath: str) -> List[str]:
     except json.JSONDecodeError:
         raise ValueError(f"{filepath!s} does not contain valid JSON.")
 
-    # 2. Extract uid helper
+ 
     def uid_from_url(url: str) -> str:
         return url.rsplit("/", 1)[-1].split(".glb", 1)[0]
 
-    # 3. Filter URLs
+   
     uid_set = set(uid_array)
     kept_urls = [url for url in urls if uid_from_url(url) not in uid_set]
 
-    # 4. Build new filename: same folder, prefixed with 'truncated_'
+   
     new_path = path.with_name(f"real_{path.name}")
 
-    # 5. Write the filtered list to the new file
+   
     with new_path.open("w", encoding="utf-8") as f:
         json.dump(kept_urls, f, indent=2)
 

@@ -1,21 +1,3 @@
-"""Blender script to render images of 3D models.
-
-This script is used to render images of 3D models. It takes in a list of paths
-to .glb files and renders images of each model. The images are from rotating the
-object around the origin. The images are saved to the output directory.
-
-Example usage:
-    blender -b -P blender_script.py -- \
-        --object_path my_object.glb \
-        --output_dir ./views \
-        --engine CYCLES \
-        --scale 0.8 \
-        --num_images 12 \
-        --camera_dist 1.2
-
-Here, input_model_paths.json is a json file containing a list of paths to .glb.
-"""
-
 import argparse
 import math
 import json
@@ -38,17 +20,16 @@ cy_prefs   = prefs.addons["cycles"].preferences
 cy_prefs.compute_device_type = "OPTIX"       # or "CUDA" if OptiX not installed
 
 cy_prefs.get_devices()                       # refresh list in Blender ≤ 3.4
-# cy_prefs.refresh_devices()                 # use this in Blender ≥ 3.5
 
-# ---- print BEFORE enabling ------------------------------------------
+
 print(f"[{time.time():.6f}]  devices BEFORE enabling:",
       [(d.name, d.type, d.use) for d in cy_prefs.devices],
       flush=True)
 
-for dev in cy_prefs.devices:                 # enable every visible GPU
+for dev in cy_prefs.devices:                 
     dev.use = (dev.type != 'CPU')
 
-# ---- print AFTER enabling -------------------------------------------
+
 print(f"[{time.time():.6f}]  devices AFTER enabling:",
       [(d.name, d.type, d.use) for d in cy_prefs.devices],
       flush=True)
@@ -128,17 +109,17 @@ def add_lighting() -> None:
 
 def reset_scene() -> None:
     """Resets the scene to a clean state."""
-    # delete everything that isn't part of a camera or a light
+   
     for obj in bpy.data.objects:
         if obj.type not in {"CAMERA", "LIGHT"}:
             bpy.data.objects.remove(obj, do_unlink=True)
-    # delete all the materials
+  
     for material in bpy.data.materials:
         bpy.data.materials.remove(material, do_unlink=True)
-    # delete all the textures
+   
     for texture in bpy.data.textures:
         bpy.data.textures.remove(texture, do_unlink=True)
-    # delete all the images
+   
     for image in bpy.data.images:
         bpy.data.images.remove(image, do_unlink=True)
 
@@ -227,13 +208,11 @@ def save_images(object_file: str) -> None:
     frames_meta = []   # ## CHANGE: collect metadata per frame
 
     for i in range(args.num_images):
-        # ## CHANGE: random camera within specified shell & height range
-        # -----------------------------------------------------------
+       
         r = random.uniform(1.5, 2.4)
-        # sample a random point on unit sphere
+       
         x, y, z = sample_point_on_sphere(1.0)
-        # enforce height range [-0.75, 1.60]
-        # scale z to desired range while keeping (x,y) direction
+        
         z = random.uniform(-0.75, 1.60) / r
         xy_scale = math.sqrt(max(1 - z ** 2, 0))
         x *= xy_scale
@@ -246,7 +225,7 @@ def save_images(object_file: str) -> None:
         scene.render.filepath = render_path
         bpy.ops.render.render(write_still=True)
 
-        # ## CHANGE: compute intrinsics & store w2c for this frame
+      
         sensor_w = cam.data.sensor_width
         sensor_h = cam.data.sensor_height if cam.data.sensor_fit == 'VERTICAL' else sensor_w
         fx = cam.data.lens * render.resolution_x / sensor_w
@@ -261,7 +240,7 @@ def save_images(object_file: str) -> None:
         }
         frames_meta.append(frame_meta)
 
-    # ## CHANGE: write per‑object metadata json
+   
     meta_dir = os.path.join(os.path.dirname(args.output_dir.rstrip(os.sep)), "metadata")
     os.makedirs(meta_dir, exist_ok=True)
     with open(os.path.join(meta_dir, f"{object_uid}.json"), "w") as f:
@@ -269,15 +248,15 @@ def save_images(object_file: str) -> None:
 
 def download_object(object_url: str) -> str:
     """Download the object and return the path."""
-    # uid = uuid.uuid4()
+   
     uid = object_url.split("/")[-1].split(".")[0]
     tmp_local_path = os.path.join("tmp-objects", f"{uid}.glb" + ".tmp")
     local_path = os.path.join("tmp-objects", f"{uid}.glb")
-    # wget the file and put it in local_path
+   
     os.makedirs(os.path.dirname(tmp_local_path), exist_ok=True)
     urllib.request.urlretrieve(object_url, tmp_local_path)
     os.rename(tmp_local_path, local_path)
-    # get the absolute path
+    
     local_path = os.path.abspath(local_path)
     return local_path
 
